@@ -26,9 +26,9 @@ struct Args {
     #[arg(short = 'b', long = "body")]
     body: Option<String>,
 
-    /// Path to the file to attach
+    /// Path to the file to attach (can be specified multiple times)
     #[arg(short = 'a', long = "attach")]
-    attached_file: Option<PathBuf>,
+    attached_files: Vec<PathBuf>,
 
     /// SMTP authentication username (defaults to FROM_EMAIL if not specified)
     #[arg(short = 'u', long = "user")]
@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     // Validate that at least one of body or attach is provided
-    if args.body.is_none() && args.attached_file.is_none() {
+    if args.body.is_none() && args.attached_files.is_empty() {
         return Err("At least one of --body or --attach must be specified".into());
     }
 
@@ -80,64 +80,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .to(args.to_email.parse()?)
         .subject(&args.subject);
 
-    let email = match (&args.body, &args.attached_file) {
-        (Some(body), Some(attached_file)) => {
-            // Both body and attachment
-            if !attached_file.exists() {
-                return Err(format!("File not found: {:?}", attached_file).into());
-            }
-
-            let file_content = std::fs::read(attached_file)?;
-            let file_name = attached_file
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("attachment");
-
-            let fallback_content_type = ContentType::parse("application/octet-stream").unwrap();
-            let content_type = mime_guess::from_path(attached_file)
-                .first()
-                .map(|mime| {
-                    ContentType::parse(mime.as_ref()).unwrap_or_else(|_| fallback_content_type.clone())
-                })
-                .unwrap_or(fallback_content_type);
-
-            let attachment = Attachment::new(file_name.to_string()).body(file_content, content_type);
-
-            email_builder.multipart(
-                MultiPart::mixed()
-                    .singlepart(SinglePart::plain(body.clone()))
-                    .singlepart(attachment),
-            )?
+    // Build attachments
+    let mut attachments = Vec::new();
+    for attached_file in &args.attached_files {
+        if !attached_file.exists() {
+            return Err(format!("File not found: {:?}", attached_file).into());
         }
-        (Some(body), None) => {
-            // Only body, no attachment
+
+        let file_content = std::fs::read(attached_file)?;
+        let file_name = attached_file
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("attachment");
+
+        let fallback_content_type = ContentType::parse("application/octet-stream").unwrap();
+        let content_type = mime_guess::from_path(attached_file)
+            .first()
+            .map(|mime| {
+                ContentType::parse(mime.as_ref()).unwrap_or_else(|_| fallback_content_type.clone())
+            })
+            .unwrap_or(fallback_content_type);
+
+        let attachment = Attachment::new(file_name.to_string()).body(file_content, content_type);
+        attachments.push(attachment);
+    }
+
+    let email = match (&args.body, attachments.is_empty()) {
+        (Some(body), false) => {
+            // Both body and attachments
+            let mut multipart = MultiPart::mixed().singlepart(SinglePart::plain(body.clone()));
+            for attachment in attachments {
+                multipart = multipart.singlepart(attachment);
+            }
+            email_builder.multipart(multipart)?
+        }
+        (Some(body), true) => {
+            // Only body, no attachments
             email_builder.body(body.clone())?
         }
-        (None, Some(attached_file)) => {
-            // Only attachment, no body
-            if !attached_file.exists() {
-                return Err(format!("File not found: {:?}", attached_file).into());
+        (None, false) => {
+            // Only attachments, no body - start with empty body to convert builder to MultiPart
+            let mut multipart = MultiPart::mixed().singlepart(SinglePart::plain(String::new()));
+            for attachment in attachments {
+                multipart = multipart.singlepart(attachment);
             }
-
-            let file_content = std::fs::read(attached_file)?;
-            let file_name = attached_file
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("attachment");
-
-            let fallback_content_type = ContentType::parse("application/octet-stream").unwrap();
-            let content_type = mime_guess::from_path(attached_file)
-                .first()
-                .map(|mime| {
-                    ContentType::parse(mime.as_ref()).unwrap_or_else(|_| fallback_content_type.clone())
-                })
-                .unwrap_or(fallback_content_type);
-
-            let attachment = Attachment::new(file_name.to_string()).body(file_content, content_type);
-
-            email_builder.multipart(MultiPart::mixed().singlepart(attachment))?
+            email_builder.multipart(multipart)?
         }
-        (None, None) => {
+        (None, true) => {
             // This case is already handled by the validation above
             unreachable!()
         }
