@@ -89,7 +89,8 @@ chmod +x "${PACKAGE_DIR}/install.sh"
 # Create the tar.gz package
 echo "Creating package..."
 cd "${BUILD_DIR}"
-tar -czvf "${PACKAGE_NAME}.tar.gz" "${PACKAGE_NAME}"
+tar -cvf "${PACKAGE_NAME}.tar" "${PACKAGE_NAME}"
+gzip -9 "${PACKAGE_NAME}.tar"
 cd ..
 
 # Move package to root
@@ -99,4 +100,4 @@ echo ""
 echo "Package created: ${PACKAGE_NAME}.tar.gz"
 echo ""
 echo "To install on OpenIPC, run:"
-echo "  curl -L https://YOUR_SERVER/${PACKAGE_NAME}.tar.gz | tar xz && cd ${PACKAGE_NAME} && ./install.sh"
+echo "  curl -sL URL/${PACKAGE_NAME}.tar.gz | gunzip | tar x -C /tmp && /tmp/${PACKAGE_NAME}/install.sh && rm -rf /tmp/${PACKAGE_NAME}"
