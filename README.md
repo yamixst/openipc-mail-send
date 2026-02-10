@@ -31,7 +31,7 @@ Download and install the latest release:
 
 ```sh
 VERSION=0.1
-curl -sL https://github.com/YOUR_USERNAME/openipc-mail-send/releases/download/v${VERSION}/openipc-mail-send-${VERSION}.tar.gz | \
+curl -sL https://github.com/yamixst/openipc-mail-send/releases/download/v${VERSION}/openipc-mail-send-${VERSION}.tar.gz | \
   gunzip | tar x -C /tmp && \
   /tmp/openipc-mail-send-${VERSION}/install.sh && \
   rm -rf /tmp/openipc-mail-send-${VERSION}
