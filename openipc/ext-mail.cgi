@@ -2,14 +2,14 @@
 <%in p/common.cgi %>
 <%
 page_title="Mail"
-config_file=/etc/webui/mail-send-snapshot.conf
+config_file=/etc/webui/mail.conf
 params="enabled from to password subject body user smtp_host smtp_port interval crontab heif"
 
 # webhook for remote send, returns [t|f]
 if [ "$GET_send" = "image" ]; then
 	echo "Content-type: text/html; charset=UTF-8"
 	echo
-	result=$(/usr/sbin/mail-send-snapshot 2>&1)
+	result=$(/usr/sbin/mail 2>&1)
 	if [ $? -eq 0 ]; then
 		echo "true"
 	else
@@ -35,9 +35,9 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 			echo "mail_${p}=\"$(eval echo \$mail_${p})\"" >> "$config_file"
 		done
 
-		sed -i /mail-send-snapshot/d /etc/crontabs/root
+		sed -i /mail/d /etc/crontabs/root
 		if [ "$mail_enabled" = "true" ] && [ "$mail_crontab" = "true" ]; then
-			echo "*/${mail_interval} * * * * /usr/sbin/mail-send-snapshot" >> /etc/crontabs/root
+			echo "*/${mail_interval} * * * * /usr/sbin/mail" >> /etc/crontabs/root
 		fi
 
 		redirect_back "success" "Mail config updated."
@@ -84,7 +84,7 @@ fi
 
 		<div class="col">
 			<% [ -e "$config_file" ] && ex "cat $config_file" %>
-			<% ex "grep mail-send-snapshot /etc/crontabs/root" %>
+			<% ex "grep /usr/sbin/mail /etc/crontabs/root" %>
 		</div>
 	</div>
 	<% button_submit %>

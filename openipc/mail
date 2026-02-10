@@ -1,5 +1,5 @@
 #!/bin/sh
-[ -e "/etc/webui/mail-send-snapshot.conf" ] && source /etc/webui/mail-send-snapshot.conf
+[ -e "/etc/webui/mail.conf" ] && source /etc/webui/mail.conf
 
 if [ "$mail_enabled" != "true" ]; then
 	echo "Sending to Mail is not enabled"
