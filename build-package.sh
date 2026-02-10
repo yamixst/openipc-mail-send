@@ -5,7 +5,7 @@
 
 set -e
 
-PACKAGE_NAME="mail-send-openipc"
+PACKAGE_NAME="openipc-mail-send"
 VERSION="${VERSION:-0.1}"
 PACKAGE_FULL_NAME="${PACKAGE_NAME}-${VERSION}"
 BUILD_DIR="build"

@@ -36,14 +36,14 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mail-send-openipc-${{ steps.version.outputs.version }}
-          path: mail-send-openipc-${{ steps.version.outputs.version }}.tar.gz
+          name: openipc-mail-send-${{ steps.version.outputs.version }}
+          path: openipc-mail-send-${{ steps.version.outputs.version }}.tar.gz
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: mail-send-openipc-${{ steps.version.outputs.version }}.tar.gz
+          files: openipc-mail-send-${{ steps.version.outputs.version }}.tar.gz
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
