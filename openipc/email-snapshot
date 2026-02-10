@@ -1,0 +1,85 @@
+#!/bin/sh
+[ -e "/etc/webui/email-snapshot.conf" ] && source /etc/webui/email-snapshot.conf
+
+if [ "$email_enabled" != "true" ]; then
+	echo "Sending to Email is not enabled"
+	exit 1
+fi
+
+if [ -z "$email_from" ]; then
+	echo "Sender email (email_from) not found"
+	exit 1
+fi
+
+if [ -z "$email_to" ]; then
+	echo "Recipient email (email_to) not found"
+	exit 1
+fi
+
+if [ -z "$email_password" ]; then
+	echo "Email password not found"
+	exit 1
+fi
+
+# Build email subject
+if [ -z "$email_subject" ]; then
+	email_subject="Snapshot from $(hostname -s), $(date +'%F %T')"
+else
+	email_subject="$(echo "$email_subject" | sed "s/%hostname/$(hostname -s)/;s/%datetime/$(date +"%F %T")/;s/%soctemp/$(ipcinfo --temp)/")"
+fi
+
+# Build email body
+if [ -z "$email_body" ]; then
+	email_body="Snapshot from $(hostname -s) at $(date +'%F %T'). SoC temperature: $(ipcinfo --temp)C"
+else
+	email_body="$(echo "$email_body" | sed "s/%hostname/$(hostname -s)/;s/%datetime/$(date +"%F %T")/;s/%soctemp/$(ipcinfo --temp)/")"
+fi
+
+# Create snapshot filename
+filename="$(hostname -s | tr ' ' '-')"-"$(date +'%Y%m%d-%H%M%S')"
+
+# Get snapshot (HEIF or JPEG)
+if [ "$email_heif" = "true" ] && [ "$(yaml-cli -g .video0.codec)" = "h265" ]; then
+	snapshot=/tmp/${filename}.heif
+	wget -q -T1 localhost/image.heif -O "$snapshot"
+else
+	snapshot=/tmp/${filename}.jpg
+	wget -q -T1 localhost/image.jpg -O "$snapshot"
+fi
+
+if [ ! -e "$snapshot" ]; then
+	echo "Snapshot file not found"
+	exit 1
+fi
+
+# Build email-send command
+command="email-send"
+command="${command} -f '${email_from}'"
+command="${command} -t '${email_to}'"
+command="${command} -p '${email_password}'"
+command="${command} -a '${snapshot}'"
+command="${command} -s '${email_subject}'"
+command="${command} -b '${email_body}'"
+
+# Optional: custom SMTP user (defaults to email_from)
+if [ -n "$email_user" ]; then
+	command="${command} -u '${email_user}'"
+fi
+
+# Optional: custom SMTP host
+if [ -n "$email_smtp_host" ]; then
+	command="${command} --smtp-host '${email_smtp_host}'"
+fi
+
+# Optional: custom SMTP port
+if [ -n "$email_smtp_port" ]; then
+	command="${command} --smtp-port '${email_smtp_port}'"
+fi
+
+echo "$command"
+eval "$command"
+result=$?
+
+rm -f "$snapshot"
+
+exit $result

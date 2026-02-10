@@ -1,0 +1,36 @@
+# Email notification configuration for OpenIPC
+# Copy this file to /etc/webui/email.conf and edit as needed
+
+# Enable/disable email notifications
+email_enabled="true"
+
+# Sender email address (required)
+email_from="camera@example.com"
+
+# Recipient email address (required)
+email_to="alerts@example.com"
+
+# SMTP authentication password (required)
+# For Gmail, use App Password: https://support.google.com/accounts/answer/185833
+email_password="your_smtp_password"
+
+# SMTP authentication username (optional, defaults to email_from)
+#email_user="smtp_username"
+
+# SMTP server host (optional, auto-detected from email domain)
+# Examples: smtp.gmail.com, smtp.mail.ru, smtp.yandex.ru
+#email_smtp_host="smtp.gmail.com"
+
+# SMTP server port (optional, default: 587)
+#email_smtp_port="587"
+
+# Email subject (optional)
+# Placeholders: %hostname, %datetime, %soctemp
+#email_subject="Alert from %hostname at %datetime"
+
+# Email body text (optional)
+# Placeholders: %hostname, %datetime, %soctemp
+#email_body="Camera %hostname captured a snapshot at %datetime. Temperature: %soctemp C"
+
+# Send snapshot as HEIF instead of JPEG (optional, requires h265 codec)
+#email_heif="false"
