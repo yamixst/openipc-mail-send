@@ -1,5 +1,5 @@
 # Rust build artifacts
-/target/
+**/target/
 **/*.rs.bk
 
 # Cargo lock file (optional - uncomment if you want to ignore it)
