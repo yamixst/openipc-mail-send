@@ -1,0 +1,259 @@
+#!/bin/sh
+#
+# mail-send - Send emails with attachments via SMTP using curl
+# Shell replacement for the Rust mail-send binary
+#
+
+set -e
+
+# Default values
+SMTP_PORT="587"
+BODY=""
+AUTH_USER=""
+SMTP_HOST=""
+ATTACHMENTS=""
+
+# Print usage
+usage() {
+    cat <<EOF
+Usage: mail-send [OPTIONS]
+
+Send emails with attachments via SMTP
+
+Options:
+  -f, --from <FROM>           Sender mail address (required)
+  -t, --to <TO>               Recipient mail address (required)
+  -s, --subject <SUBJECT>     Mail subject (required)
+  -b, --body <BODY>           Mail body text
+  -a, --attach <FILE>         Path to file to attach (can be repeated)
+  -u, --user <USER>           SMTP auth username (defaults to FROM)
+  -p, --password <PASSWORD>   SMTP auth password (required)
+      --smtp-host <HOST>      SMTP server host (auto-detected from domain)
+      --smtp-port <PORT>      SMTP server port (default: 587)
+  -h, --help                  Show this help message
+
+Examples:
+  mail-send -f user@gmail.com -t dest@example.com -s "Test" -b "Hello" -p "password"
+  mail-send -f user@gmail.com -t dest@example.com -s "Photo" -a /tmp/image.jpg -p "password"
+EOF
+    exit 0
+}
+
+# Parse command line arguments
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -f|--from)
+            FROM="$2"
+            shift 2
+            ;;
+        -t|--to)
+            TO="$2"
+            shift 2
+            ;;
+        -s|--subject)
+            SUBJECT="$2"
+            shift 2
+            ;;
+        -b|--body)
+            BODY="$2"
+            shift 2
+            ;;
+        -a|--attach)
+            if [ -z "$ATTACHMENTS" ]; then
+                ATTACHMENTS="$2"
+            else
+                ATTACHMENTS="$ATTACHMENTS|$2"
+            fi
+            shift 2
+            ;;
+        -u|--user)
+            AUTH_USER="$2"
+            shift 2
+            ;;
+        -p|--password)
+            AUTH_PASS="$2"
+            shift 2
+            ;;
+        --smtp-host)
+            SMTP_HOST="$2"
+            shift 2
+            ;;
+        --smtp-port)
+            SMTP_PORT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# Validate required arguments
+if [ -z "$FROM" ]; then
+    echo "Error: --from is required" >&2
+    exit 1
+fi
+
+if [ -z "$TO" ]; then
+    echo "Error: --to is required" >&2
+    exit 1
+fi
+
+if [ -z "$SUBJECT" ]; then
+    echo "Error: --subject is required" >&2
+    exit 1
+fi
+
+if [ -z "$AUTH_PASS" ]; then
+    echo "Error: --password is required" >&2
+    exit 1
+fi
+
+if [ -z "$BODY" ] && [ -z "$ATTACHMENTS" ]; then
+    echo "Error: At least one of --body or --attach must be specified" >&2
+    exit 1
+fi
+
+# Use FROM as auth user if not specified
+if [ -z "$AUTH_USER" ]; then
+    AUTH_USER="$FROM"
+fi
+
+# Extract SMTP host from email domain if not specified
+if [ -z "$SMTP_HOST" ]; then
+    DOMAIN=$(echo "$FROM" | sed 's/.*@//')
+    if [ -z "$DOMAIN" ]; then
+        echo "Error: Invalid mail address: $FROM" >&2
+        exit 1
+    fi
+    SMTP_HOST="smtp.$DOMAIN"
+fi
+
+# Generate boundary for multipart message
+BOUNDARY="----=_Part_$(date +%s)_$$"
+
+# Generate Message-ID
+MSG_ID="<$(date +%s).$$@$(hostname -s)>"
+
+# Create temporary file for email
+MAIL_FILE=$(mktemp)
+trap "rm -f '$MAIL_FILE'" EXIT
+
+# Detect MIME type for a file
+get_mime_type() {
+    _file="$1"
+    _ext="${_file##*.}"
+    case "$_ext" in
+        jpg|jpeg) echo "image/jpeg" ;;
+        png)      echo "image/png" ;;
+        gif)      echo "image/gif" ;;
+        heif|heic) echo "image/heif" ;;
+        webp)     echo "image/webp" ;;
+        pdf)      echo "application/pdf" ;;
+        txt)      echo "text/plain" ;;
+        html|htm) echo "text/html" ;;
+        mp4)      echo "video/mp4" ;;
+        avi)      echo "video/x-msvideo" ;;
+        mkv)      echo "video/x-matroska" ;;
+        mp3)      echo "audio/mpeg" ;;
+        wav)      echo "audio/wav" ;;
+        zip)      echo "application/zip" ;;
+        tar)      echo "application/x-tar" ;;
+        gz|tgz)   echo "application/gzip" ;;
+        *)        echo "application/octet-stream" ;;
+    esac
+}
+
+# Build email headers
+{
+    echo "From: $FROM"
+    echo "To: $TO"
+    echo "Subject: $SUBJECT"
+    echo "Date: $(date -R 2>/dev/null || date '+%a, %d %b %Y %H:%M:%S %z')"
+    echo "Message-ID: $MSG_ID"
+    echo "MIME-Version: 1.0"
+} > "$MAIL_FILE"
+
+# Check if we have attachments
+if [ -n "$ATTACHMENTS" ]; then
+    # Multipart message
+    echo "Content-Type: multipart/mixed; boundary=\"$BOUNDARY\"" >> "$MAIL_FILE"
+    echo "" >> "$MAIL_FILE"
+    echo "This is a multi-part message in MIME format." >> "$MAIL_FILE"
+
+    # Add body part if present
+    if [ -n "$BODY" ]; then
+        echo "" >> "$MAIL_FILE"
+        echo "--$BOUNDARY" >> "$MAIL_FILE"
+        echo "Content-Type: text/plain; charset=UTF-8" >> "$MAIL_FILE"
+        echo "Content-Transfer-Encoding: 8bit" >> "$MAIL_FILE"
+        echo "" >> "$MAIL_FILE"
+        echo "$BODY" >> "$MAIL_FILE"
+    fi
+
+    # Add attachments
+    OLD_IFS="$IFS"
+    IFS="|"
+    for attachment in $ATTACHMENTS; do
+        IFS="$OLD_IFS"
+
+        if [ ! -f "$attachment" ]; then
+            echo "Error: File not found: $attachment" >&2
+            exit 1
+        fi
+
+        filename=$(basename "$attachment")
+        mime_type=$(get_mime_type "$attachment")
+
+        echo "" >> "$MAIL_FILE"
+        echo "--$BOUNDARY" >> "$MAIL_FILE"
+        echo "Content-Type: $mime_type; name=\"$filename\"" >> "$MAIL_FILE"
+        echo "Content-Transfer-Encoding: base64" >> "$MAIL_FILE"
+        echo "Content-Disposition: attachment; filename=\"$filename\"" >> "$MAIL_FILE"
+        echo "" >> "$MAIL_FILE"
+
+        # Encode attachment in base64
+        if command -v base64 >/dev/null 2>&1; then
+            base64 "$attachment" >> "$MAIL_FILE"
+        elif command -v openssl >/dev/null 2>&1; then
+            openssl base64 -in "$attachment" >> "$MAIL_FILE"
+        else
+            echo "Error: No base64 encoder found (need base64 or openssl)" >&2
+            exit 1
+        fi
+
+        IFS="|"
+    done
+    IFS="$OLD_IFS"
+
+    # Close multipart
+    echo "" >> "$MAIL_FILE"
+    echo "--$BOUNDARY--" >> "$MAIL_FILE"
+else
+    # Simple text message
+    echo "Content-Type: text/plain; charset=UTF-8" >> "$MAIL_FILE"
+    echo "Content-Transfer-Encoding: 8bit" >> "$MAIL_FILE"
+    echo "" >> "$MAIL_FILE"
+    echo "$BODY" >> "$MAIL_FILE"
+fi
+
+# Send email using curl
+SMTP_URL="smtp://${SMTP_HOST}:${SMTP_PORT}"
+
+curl_output=$(curl --silent --show-error \
+    --url "$SMTP_URL" \
+    --ssl-reqd \
+    --mail-from "$FROM" \
+    --mail-rcpt "$TO" \
+    --user "${AUTH_USER}:${AUTH_PASS}" \
+    --upload-file "$MAIL_FILE" 2>&1) || {
+    echo "Failed to send mail: $curl_output" >&2
+    exit 1
+}
+
+echo "Mail sent successfully to $TO"
+exit 0
