@@ -82,10 +82,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or("attachment");
 
     // Guess MIME type from file extension
+    let fallback_content_type = ContentType::parse("application/octet-stream").unwrap();
     let content_type = mime_guess::from_path(&args.attached_file)
         .first()
-        .map(|mime| ContentType::parse(mime.as_ref()).unwrap_or(ContentType::APPLICATION_OCTET_STREAM))
-        .unwrap_or(ContentType::APPLICATION_OCTET_STREAM);
+        .map(|mime| ContentType::parse(mime.as_ref()).unwrap_or_else(|_| fallback_content_type.clone()))
+        .unwrap_or(fallback_content_type);
 
     // Create attachment
     let attachment = Attachment::new(file_name.to_string()).body(file_content, content_type);

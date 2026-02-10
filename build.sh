@@ -13,12 +13,6 @@ if ! command -v cargo &> /dev/null; then
     exit 1
 fi
 
-# Install cross if not already installed
-if ! command -v cross &> /dev/null; then
-    echo "Installing 'cross' for cross-compilation..."
-    cargo install cross --git https://github.com/cross-rs/cross
-fi
-
 # Create output directory
 OUTPUT_DIR="./target/release-builds"
 mkdir -p "$OUTPUT_DIR"
@@ -31,7 +25,7 @@ echo ""
 rustup target add x86_64-unknown-linux-gnu 2>/dev/null || true
 
 # Build for x86_64 Linux
-cross build --release --target x86_64-unknown-linux-gnu
+cargo build --release --target x86_64-unknown-linux-gnu
 
 # Copy binary to output directory
 cp target/x86_64-unknown-linux-gnu/release/email-send "$OUTPUT_DIR/email-send-x86_64-linux"
@@ -44,12 +38,26 @@ echo ""
 # Add target if not present
 rustup target add armv7-unknown-linux-gnueabihf 2>/dev/null || true
 
-# Build for armv7l Linux
-cross build --release --target armv7-unknown-linux-gnueabihf
+# Check if ARM cross-compiler is available
+if ! command -v arm-linux-gnueabihf-gcc &> /dev/null; then
+    echo "Warning: ARM cross-compiler (arm-linux-gnueabihf-gcc) not found."
+    echo "On Debian/Ubuntu, install with: sudo apt install gcc-arm-linux-gnueabihf"
+    echo "Skipping ARM build..."
+else
+    # Create cargo config for cross-compilation if not exists
+    mkdir -p .cargo
+    if ! grep -q "armv7-unknown-linux-gnueabihf" .cargo/config.toml 2>/dev/null; then
+        echo '[target.armv7-unknown-linux-gnueabihf]' >> .cargo/config.toml
+        echo 'linker = "arm-linux-gnueabihf-gcc"' >> .cargo/config.toml
+    fi
 
-# Copy binary to output directory
-cp target/armv7-unknown-linux-gnueabihf/release/email-send "$OUTPUT_DIR/email-send-armv7l-linux"
-echo "Built: $OUTPUT_DIR/email-send-armv7l-linux"
+    # Build for armv7l Linux
+    cargo build --release --target armv7-unknown-linux-gnueabihf
+
+    # Copy binary to output directory
+    cp target/armv7-unknown-linux-gnueabihf/release/email-send "$OUTPUT_DIR/email-send-armv7l-linux"
+    echo "Built: $OUTPUT_DIR/email-send-armv7l-linux"
+fi
 
 echo ""
 echo "=== Build Complete ==="
