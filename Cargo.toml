@@ -1,5 +1,5 @@
 [package]
-name = "email-send"
+name = "mail-send"
 version = "0.1.0"
 edition = "2021"
 description = "CLI tool to send emails with attachments via SMTP"

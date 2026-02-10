@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for building email-send
+# Multi-stage Dockerfile for building mail-send
 # Supports building for multiple architectures
 
 FROM rust:1.87-bookworm AS builder
@@ -36,8 +36,8 @@ RUN cargo build --release --target armv7-unknown-linux-musleabihf
 
 # Create output directory and copy binaries
 RUN mkdir -p /output && \
-    cp target/x86_64-unknown-linux-gnu/release/email-send /output/email-send-x86_64-linux && \
-    cp target/armv7-unknown-linux-musleabihf/release/email-send /output/email-send-armv7l-linux
+    cp target/x86_64-unknown-linux-gnu/release/mail-send /output/mail-send-x86_64-linux && \
+    cp target/armv7-unknown-linux-musleabihf/release/mail-send /output/mail-send-armv7l-linux
 
 # Final stage - minimal image with binaries for extraction and runtime
 FROM debian:bookworm-slim AS runtime
@@ -50,6 +50,6 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /output/ /output/
 
 # Also copy the x86_64 binary to the standard location for runtime use
-COPY --from=builder /output/email-send-x86_64-linux /usr/local/bin/email-send
+COPY --from=builder /output/mail-send-x86_64-linux /usr/local/bin/mail-send
 
-ENTRYPOINT ["email-send"]
+ENTRYPOINT ["mail-send"]

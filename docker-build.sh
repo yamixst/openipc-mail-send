@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Email-Send Docker Build Script ==="
+echo "=== Mail-Send Docker Build Script ==="
 echo ""
 
 # Ensure we're in the project directory
@@ -21,21 +21,21 @@ echo "Building Docker image..."
 echo ""
 
 # Build the Docker image
-docker build -t email-send-builder .
+docker build -t mail-send-builder .
 
 echo ""
 echo "Extracting binaries from Docker image..."
 echo ""
 
 # Create a temporary container and copy binaries out
-CONTAINER_ID=$(docker create email-send-builder)
-docker cp "$CONTAINER_ID:/output/email-send-x86_64-linux" "$OUTPUT_DIR/email-send-x86_64-linux"
-docker cp "$CONTAINER_ID:/output/email-send-armv7l-linux" "$OUTPUT_DIR/email-send-armv7l-linux"
+CONTAINER_ID=$(docker create mail-send-builder)
+docker cp "$CONTAINER_ID:/output/mail-send-x86_64-linux" "$OUTPUT_DIR/mail-send-x86_64-linux"
+docker cp "$CONTAINER_ID:/output/mail-send-armv7l-linux" "$OUTPUT_DIR/mail-send-armv7l-linux"
 docker rm "$CONTAINER_ID" > /dev/null
 
 # Make binaries executable
-chmod +x "$OUTPUT_DIR/email-send-x86_64-linux"
-chmod +x "$OUTPUT_DIR/email-send-armv7l-linux"
+chmod +x "$OUTPUT_DIR/mail-send-x86_64-linux"
+chmod +x "$OUTPUT_DIR/mail-send-armv7l-linux"
 
 echo ""
 echo "=== Build Complete ==="
@@ -46,7 +46,7 @@ ls -lh "$OUTPUT_DIR"
 
 echo ""
 echo "To run the x86_64 binary directly:"
-echo "  $OUTPUT_DIR/email-send-x86_64-linux --help"
+echo "  $OUTPUT_DIR/mail-send-x86_64-linux --help"
 echo ""
 echo "To run via Docker:"
-echo "  docker run --rm email-send-builder --help"
+echo "  docker run --rm mail-send-builder --help"

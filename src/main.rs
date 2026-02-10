@@ -7,22 +7,22 @@ use lettre::{
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
-#[command(name = "email-send")]
-#[command(about = "Send emails with attachments via SMTP")]
+#[command(name = "mail-send")]
+#[command(about = "Send mails with attachments via SMTP")]
 struct Args {
-    /// Sender email address
+    /// Sender mail address
     #[arg(short = 'f', long = "from")]
-    from_email: String,
+    from: String,
 
-    /// Recipient email address
+    /// Recipient mail address
     #[arg(short = 't', long = "to")]
-    to_email: String,
+    to: String,
 
-    /// Email subject
+    /// Mail subject
     #[arg(short = 's', long = "subject")]
     subject: String,
 
-    /// Email body text
+    /// Mail body text
     #[arg(short = 'b', long = "body")]
     body: Option<String>,
 
@@ -30,7 +30,7 @@ struct Args {
     #[arg(short = 'a', long = "attach")]
     attached_files: Vec<PathBuf>,
 
-    /// SMTP authentication username (defaults to FROM_EMAIL if not specified)
+    /// SMTP authentication username (defaults to FROM if not specified)
     #[arg(short = 'u', long = "user")]
     auth_user: Option<String>,
 
@@ -47,11 +47,11 @@ struct Args {
     smtp_port: u16,
 }
 
-fn extract_smtp_host(email: &str) -> Result<String, String> {
-    let domain = email
+fn extract_smtp_host(mail: &str) -> Result<String, String> {
+    let domain = mail
         .split('@')
         .nth(1)
-        .ok_or_else(|| format!("Invalid email address: {}", email))?;
+        .ok_or_else(|| format!("Invalid mail address: {}", mail))?;
 
     Ok(format!("smtp.{}", domain))
 }
@@ -65,19 +65,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("At least one of --body or --attach must be specified".into());
     }
 
-    // Use from_email as auth_user if not specified
-    let auth_user = args.auth_user.unwrap_or_else(|| args.from_email.clone());
+    // Use from as auth_user if not specified
+    let auth_user = args.auth_user.unwrap_or_else(|| args.from.clone());
 
     // Determine SMTP host
     let smtp_host = match args.smtp_host {
         Some(host) => host,
-        None => extract_smtp_host(&args.from_email)?,
+        None => extract_smtp_host(&args.from)?,
     };
 
-    // Build the email message
-    let email_builder = Message::builder()
-        .from(args.from_email.parse()?)
-        .to(args.to_email.parse()?)
+    // Build the mail message
+    let mail_builder = Message::builder()
+        .from(args.from.parse()?)
+        .to(args.to.parse()?)
         .subject(&args.subject);
 
     // Build attachments
@@ -105,18 +105,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         attachments.push(attachment);
     }
 
-    let email = match (&args.body, attachments.is_empty()) {
+    let mail = match (&args.body, attachments.is_empty()) {
         (Some(body), false) => {
             // Both body and attachments
             let mut multipart = MultiPart::mixed().singlepart(SinglePart::plain(body.clone()));
             for attachment in attachments {
                 multipart = multipart.singlepart(attachment);
             }
-            email_builder.multipart(multipart)?
+            mail_builder.multipart(multipart)?
         }
         (Some(body), true) => {
             // Only body, no attachments
-            email_builder.body(body.clone())?
+            mail_builder.body(body.clone())?
         }
         (None, false) => {
             // Only attachments, no body - start with empty body to convert builder to MultiPart
@@ -124,7 +124,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             for attachment in attachments {
                 multipart = multipart.singlepart(attachment);
             }
-            email_builder.multipart(multipart)?
+            mail_builder.multipart(multipart)?
         }
         (None, true) => {
             // This case is already handled by the validation above
@@ -142,12 +142,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .credentials(creds)
             .build();
 
-    // Send the email
-    match mailer.send(email).await {
+    // Send the mail
+    match mailer.send(mail).await {
         Ok(_) => {
-            println!("Email sent successfully to {}", args.to_email);
+            println!("Mail sent successfully to {}", args.to);
             Ok(())
         }
-        Err(e) => Err(format!("Failed to send email: {}", e).into()),
+        Err(e) => Err(format!("Failed to send mail: {}", e).into()),
     }
 }

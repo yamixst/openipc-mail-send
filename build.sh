@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Email-Send Cross-Compilation Build Script ==="
+echo "=== Mail-Send Cross-Compilation Build Script ==="
 echo ""
 
 # Ensure we're in the project directory
@@ -28,8 +28,8 @@ rustup target add x86_64-unknown-linux-gnu 2>/dev/null || true
 cargo build --release --target x86_64-unknown-linux-gnu
 
 # Copy binary to output directory
-cp target/x86_64-unknown-linux-gnu/release/email-send "$OUTPUT_DIR/email-send-x86_64-linux"
-echo "Built: $OUTPUT_DIR/email-send-x86_64-linux"
+cp target/x86_64-unknown-linux-gnu/release/mail-send "$OUTPUT_DIR/mail-send-x86_64-linux"
+echo "Built: $OUTPUT_DIR/mail-send-x86_64-linux"
 
 echo ""
 echo "=== Building for armv7-unknown-linux-musleabihf (armv7l) ==="
@@ -55,8 +55,8 @@ else
     cargo build --release --target armv7-unknown-linux-musleabihf
 
     # Copy binary to output directory
-    cp target/armv7-unknown-linux-musleabihf/release/email-send "$OUTPUT_DIR/email-send-armv7l-linux"
-    echo "Built: $OUTPUT_DIR/email-send-armv7l-linux"
+    cp target/armv7-unknown-linux-musleabihf/release/mail-send "$OUTPUT_DIR/mail-send-armv7l-linux"
+    echo "Built: $OUTPUT_DIR/mail-send-armv7l-linux"
 fi
 
 echo ""
