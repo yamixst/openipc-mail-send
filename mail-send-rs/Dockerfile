@@ -38,18 +38,3 @@ RUN cargo build --release --target armv7-unknown-linux-musleabihf
 RUN mkdir -p /output && \
     cp target/x86_64-unknown-linux-gnu/release/mail-send /output/mail-send-x86_64-linux && \
     cp target/armv7-unknown-linux-musleabihf/release/mail-send /output/mail-send-armv7l-linux
-
-# Final stage - minimal image with binaries for extraction and runtime
-FROM debian:bookworm-slim AS runtime
-
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy all binaries to /output for extraction
-COPY --from=builder /output/ /output/
-
-# Also copy the x86_64 binary to the standard location for runtime use
-COPY --from=builder /output/mail-send-x86_64-linux /usr/local/bin/mail-send
-
-ENTRYPOINT ["mail-send"]
