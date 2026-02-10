@@ -6,9 +6,10 @@
 set -e
 
 PACKAGE_NAME="mail-send-openipc"
-VERSION="0.1.0"
+VERSION="${VERSION:-0.1}"
+PACKAGE_FULL_NAME="${PACKAGE_NAME}-${VERSION}"
 BUILD_DIR="build"
-PACKAGE_DIR="${BUILD_DIR}/${PACKAGE_NAME}"
+PACKAGE_DIR="${BUILD_DIR}/${PACKAGE_FULL_NAME}"
 
 echo "Building ${PACKAGE_NAME} v${VERSION} package..."
 
@@ -89,15 +90,15 @@ chmod +x "${PACKAGE_DIR}/install.sh"
 # Create the tar.gz package
 echo "Creating package..."
 cd "${BUILD_DIR}"
-tar -cvf "${PACKAGE_NAME}.tar" "${PACKAGE_NAME}"
-gzip -9 "${PACKAGE_NAME}.tar"
+tar -cvf "${PACKAGE_FULL_NAME}.tar" "${PACKAGE_FULL_NAME}"
+gzip -9 "${PACKAGE_FULL_NAME}.tar"
 cd ..
 
 # Move package to root
-mv "${BUILD_DIR}/${PACKAGE_NAME}.tar.gz" .
+mv "${BUILD_DIR}/${PACKAGE_FULL_NAME}.tar.gz" .
 
 echo ""
-echo "Package created: ${PACKAGE_NAME}.tar.gz"
+echo "Package created: ${PACKAGE_FULL_NAME}.tar.gz"
 echo ""
 echo "To install on OpenIPC, run:"
-echo "  curl -sL URL/${PACKAGE_NAME}.tar.gz | gunzip | tar x -C /tmp && /tmp/${PACKAGE_NAME}/install.sh && rm -rf /tmp/${PACKAGE_NAME}"
+echo "  curl -sL URL/${PACKAGE_FULL_NAME}.tar.gz | gunzip | tar x -C /tmp && /tmp/${PACKAGE_FULL_NAME}/install.sh && rm -rf /tmp/${PACKAGE_FULL_NAME}"
