@@ -15,7 +15,7 @@ A simple CLI tool written in Rust to send emails with attachments via SMTP.
 
 ```bash
 # Clone the repository
-cd email-sender
+cd email-send
 
 # Build in release mode
 cargo build --release
