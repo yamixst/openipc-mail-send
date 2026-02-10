@@ -1,134 +1,175 @@
-# Mail-Send
+# mail-send-rs
 
-A simple CLI tool written in Rust to send mails with attachments via SMTP.
+A lightweight CLI tool written in Rust to send emails with attachments via SMTP. Designed for embedded systems and IoT devices, particularly OpenIPC cameras.
 
 ## Features
 
-- Send mails with file attachments
-- Automatic SMTP server detection from mail domain
-- MIME type detection for attachments
-- Cross-platform support (x86_64 and armv7l Linux)
+- Send emails with text body and/or file attachments
+- SMTP authentication with STARTTLS support
+- Automatic SMTP host detection from email domain
+- Multiple file attachments support
+- Automatic MIME type detection
+- Cross-compilation support for x86_64 and ARMv7 (musl)
+- Optimized binary size with LTO and stripping
 
 ## Installation
 
 ### From Source
 
 ```bash
-# Clone the repository
-cd mail-send
-
-# Build in release mode
+cd mail-send-rs
 cargo build --release
-
-# The binary will be at ./target/release/mail-send
 ```
+
+The binary will be located at `target/release/mail-send`.
 
 ### Cross-Compilation
 
-To build for both x86_64 and armv7l Linux:
+#### Using Docker (Recommended)
 
-```bash
-./build.sh
-```
-
-This requires ARM cross-compiler (`arm-linux-gnueabihf-gcc`) to be installed.
-
-### Docker Build
-
-To build using Docker (no local toolchain required):
+Build for both x86_64 and ARMv7 architectures:
 
 ```bash
 ./docker-build.sh
 ```
 
-This will build binaries for both x86_64 and armv7l Linux inside a Docker container.
+Binaries will be available in `target/release-builds/`:
+- `mail-send-x86_64-linux`
+- `mail-send-armv7l-linux`
 
-You can also run the tool directly via Docker:
+#### Manual Cross-Compilation
 
 ```bash
-docker run --rm -v "$(pwd):/data" mail-send-builder \
-  -f "sender@gmail.com" -t "recipient@example.com" -s "Subject" \
-  -a "/data/document.pdf" -p "mypassword"
+./build.sh
 ```
 
-Binaries will be placed in `./target/release-builds/`:
-- `mail-send-x86_64-linux`
-- `mail-send-armv7l-linux` (statically linked with musl)
+Requires ARM musl cross-compiler (`arm-linux-musleabihf-gcc`) for ARMv7 builds.
+Download from https://musl.cc/ if not installed.
 
 ## Usage
 
-```bash
-mail-send -f FROM -t TO -s SUBJECT -b BODY -a ATTACHED_FILE_PATH -p AUTH_PASS
+```
+mail-send [OPTIONS]
 ```
 
-### Arguments
+### Required Options
 
-| Argument | Description | Default |
-|----------|-------------|---------|
-| `-f`, `--from` | Sender mail address | - |
-| `-t`, `--to` | Recipient mail address | - |
-| `-s`, `--subject` | Mail subject | - |
-| `-b`, `--body` | Mail body text | - |
-| `-a`, `--attach` | Path to file to attach (can be specified multiple times) | - |
-| `-u`, `--user` | SMTP authentication username | Same as Sender |
-| `-p`, `--password` | SMTP authentication password | - |
-| `--smtp-host` | SMTP server hostname | Auto-detected from mail domain |
-| `--smtp-port` | SMTP server port | 587 |
+| Option | Description |
+|--------|-------------|
+| `-f, --from <FROM>` | Sender email address |
+| `-t, --to <TO>` | Recipient email address |
+| `-s, --subject <SUBJECT>` | Email subject |
+| `-p, --password <PASSWORD>` | SMTP authentication password |
+
+### Optional Options
+
+| Option | Description |
+|--------|-------------|
+| `-b, --body <BODY>` | Email body text |
+| `-a, --attach <FILE>` | Path to file to attach (can be repeated) |
+| `-u, --user <USER>` | SMTP auth username (defaults to FROM) |
+| `--smtp-host <HOST>` | SMTP server host (auto-detected from domain) |
+| `--smtp-port <PORT>` | SMTP server port (default: 587) |
+| `-h, --help` | Show help message |
+
+**Note:** At least one of `--body` or `--attach` must be specified.
 
 ### Examples
 
-Send a mail with default auth user (same as from):
+Send a simple text email:
 
 ```bash
-mail-send -f "sender@gmail.com" -t "recipient@example.com" -s "Mail with attachment" -a "./document.pdf" -p "mypassword"
+mail-send \
+  -f user@gmail.com \
+  -t recipient@example.com \
+  -s "Hello" \
+  -b "This is the message body" \
+  -p "your-app-password"
 ```
 
-Send with custom subject and body:
+Send an email with an attachment:
 
 ```bash
-mail-send -f "sender@gmail.com" -t "recipient@example.com" -s "Monthly Report" \
-  -b "Please find the monthly report attached." -a "./report.xlsx" -p "mypassword"
+mail-send \
+  -f user@gmail.com \
+  -t recipient@example.com \
+  -s "Photo from camera" \
+  -a /tmp/snapshot.jpg \
+  -p "your-app-password"
 ```
 
-Send multiple attachments:
+Send an email with multiple attachments:
 
 ```bash
-mail-send -f "sender@gmail.com" -t "recipient@example.com" -s "Documents" \
-  -b "Please find the attached documents." \
-  -a "./report.pdf" -a "./data.xlsx" -a "./summary.docx" -p "mypassword"
+mail-send \
+  -f user@gmail.com \
+  -t recipient@example.com \
+  -s "Multiple files" \
+  -b "See attached files" \
+  -a /tmp/file1.jpg \
+  -a /tmp/file2.pdf \
+  -p "your-app-password"
 ```
 
-Use a custom SMTP server:
+Using a custom SMTP server:
 
 ```bash
-mail-send -f "sender@company.com" -t "client@example.com" -s "Invoice" \
-  -a "./invoice.pdf" -u "smtp_user" -p "smtp_pass" --smtp-host "mail.company.com" --smtp-port 465
+mail-send \
+  -f user@example.com \
+  -t recipient@example.com \
+  -s "Custom SMTP" \
+  -b "Message" \
+  --smtp-host mail.example.com \
+  --smtp-port 465 \
+  -p "password"
 ```
 
-## SMTP Server Auto-Detection
+## SMTP Configuration
 
-If `--smtp-host` is not specified, the tool will attempt to determine the SMTP server from the sender's mail domain:
+### Automatic Host Detection
+
+If `--smtp-host` is not specified, the tool automatically derives the SMTP host from the sender's email domain:
 
 - `user@gmail.com` → `smtp.gmail.com`
 - `user@outlook.com` → `smtp.outlook.com`
-- `user@company.com` → `smtp.company.com`
+- `user@example.com` → `smtp.example.com`
 
-## Security Notes
+### Gmail Setup
 
-- Never hardcode passwords in scripts
-- Consider using environment variables for credentials:
-  ```bash
-  mail-send -p "$SMTP_PASSWORD" -f "..." -t "..." -a "..."
-  ```
-- For Gmail, you may need to use an [App Password](https://support.google.com/accounts/answer/185833)
+For Gmail, you need to use an App Password:
+
+1. Enable 2-Factor Authentication on your Google Account
+2. Go to [Google App Passwords](https://myaccount.google.com/apppasswords)
+3. Create a new App Password for "Mail"
+4. Use the generated 16-character password with `-p`
 
 ## Dependencies
 
-- [lettre](https://crates.io/crates/lettre) - Mail sending library
-- [clap](https://crates.io/crates/clap) - Command-line argument parsing
+- [lettre](https://crates.io/crates/lettre) - Email library for Rust
 - [tokio](https://crates.io/crates/tokio) - Async runtime
+- [clap](https://crates.io/crates/clap) - Command line argument parser
 - [mime_guess](https://crates.io/crates/mime_guess) - MIME type detection
+
+## Supported MIME Types
+
+The tool automatically detects MIME types for common file extensions:
+
+- **Images:** JPEG, PNG, GIF, WebP, HEIF/HEIC
+- **Documents:** PDF, TXT, HTML
+- **Video:** MP4, AVI, MKV
+- **Audio:** MP3, WAV
+- **Archives:** ZIP, TAR, GZIP
+
+Unknown file types default to `application/octet-stream`.
+
+## Build Optimization
+
+The release build is optimized for minimal binary size:
+
+- `opt-level = "z"` - Optimize for size
+- `lto = true` - Link-Time Optimization
+- `strip = true` - Strip debug symbols
 
 ## License
 
-MIT
+Part of the OpenIPC project.
