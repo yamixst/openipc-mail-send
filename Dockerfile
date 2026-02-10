@@ -39,17 +39,17 @@ RUN mkdir -p /output && \
     cp target/x86_64-unknown-linux-gnu/release/email-send /output/email-send-x86_64-linux && \
     cp target/armv7-unknown-linux-musleabihf/release/email-send /output/email-send-armv7l-linux
 
-# Final stage - minimal image with just the binaries
+# Final stage - minimal image with binaries for extraction and runtime
 FROM debian:bookworm-slim AS runtime
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy all binaries to /output for extraction
+COPY --from=builder /output/ /output/
+
+# Also copy the x86_64 binary to the standard location for runtime use
 COPY --from=builder /output/email-send-x86_64-linux /usr/local/bin/email-send
 
 ENTRYPOINT ["email-send"]
-
-# Extract stage - use this to copy binaries out
-FROM scratch AS binaries
-COPY --from=builder /output/ /
