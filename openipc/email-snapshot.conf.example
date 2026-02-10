@@ -10,6 +10,14 @@ email_from="camera@example.com"
 # Recipient email address (required)
 email_to="alerts@example.com"
 
+# Email subject (optional)
+# Placeholders: %hostname, %datetime, %soctemp
+#email_subject="Alert from %hostname at %datetime"
+
+# Email body text (optional)
+# Placeholders: %hostname, %datetime, %soctemp
+#email_body="Camera %hostname captured a snapshot at %datetime. Temperature: %soctemp C"
+
 # SMTP authentication password (required)
 # For Gmail, use App Password: https://support.google.com/accounts/answer/185833
 email_password="your_smtp_password"
@@ -23,14 +31,6 @@ email_password="your_smtp_password"
 
 # SMTP server port (optional, default: 587)
 #email_smtp_port="587"
-
-# Email subject (optional)
-# Placeholders: %hostname, %datetime, %soctemp
-#email_subject="Alert from %hostname at %datetime"
-
-# Email body text (optional)
-# Placeholders: %hostname, %datetime, %soctemp
-#email_body="Camera %hostname captured a snapshot at %datetime. Temperature: %soctemp C"
 
 # Send snapshot as HEIF instead of JPEG (optional, requires h265 codec)
 #email_heif="false"

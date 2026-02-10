@@ -56,10 +56,10 @@ fi
 command="email-send"
 command="${command} -f '${email_from}'"
 command="${command} -t '${email_to}'"
-command="${command} -p '${email_password}'"
-command="${command} -a '${snapshot}'"
 command="${command} -s '${email_subject}'"
 command="${command} -b '${email_body}'"
+command="${command} -a '${snapshot}'"
+command="${command} -p '${email_password}'"
 
 # Optional: custom SMTP user (defaults to email_from)
 if [ -n "$email_user" ]; then
