@@ -40,25 +40,20 @@ Binaries will be placed in `./target/release-builds/`:
 ## Usage
 
 ```bash
-email-send -u AUTH_USER -p AUTH_PASS -f FROM_EMAIL -t TO_EMAIL -a ATTACHED_FILE_PATH
+email-send -f FROM_EMAIL -t TO_EMAIL -s SUBJECT -b BODY -a ATTACHED_FILE_PATH -p AUTH_PASS
 ```
 
-### Required Arguments
-
-| Argument | Description |
-|----------|-------------|
-| `-p`, `--password` | SMTP authentication password |
-| `-f`, `--from` | Sender email address |
-| `-t`, `--to` | Recipient email address |
-| `-a`, `--attach` | Path to the file to attach |
-
-### Optional Arguments
+### Arguments
 
 | Argument | Description | Default |
 |----------|-------------|---------|
-| `-u`, `--user` | SMTP authentication username | Same as FROM_EMAIL |
-| `-s`, `--subject` | Email subject | "Email with attachment" |
-| `-b`, `--body` | Email body text | "Please see the attached file." |
+| `-f`, `--from` | Sender email address | - |
+| `-t`, `--to` | Recipient email address | - |
+| `-s`, `--subject` | Email subject | - |
+| `-b`, `--body` | Email body text | - |
+| `-a`, `--attach` | Path to the file to attach | - |
+| `-u`, `--user` | SMTP authentication username | Same as Sender |
+| `-p`, `--password` | SMTP authentication password | - |
 | `--smtp-host` | SMTP server hostname | Auto-detected from email domain |
 | `--smtp-port` | SMTP server port | 587 |
 
@@ -67,21 +62,21 @@ email-send -u AUTH_USER -p AUTH_PASS -f FROM_EMAIL -t TO_EMAIL -a ATTACHED_FILE_
 Send an email with default auth user (same as from email):
 
 ```bash
-email-send -p "mypassword" -f "sender@gmail.com" -t "recipient@example.com" -a "./document.pdf"
+email-send -f "sender@gmail.com" -t "recipient@example.com" -s "Email with attachment" -a "./document.pdf" -p "mypassword"
 ```
 
 Send with custom subject and body:
 
 ```bash
-email-send -p "mypassword" -f "sender@gmail.com" -t "recipient@example.com" \
-  -a "./report.xlsx" -s "Monthly Report" -b "Please find the monthly report attached."
+email-send -f "sender@gmail.com" -t "recipient@example.com" -s "Monthly Report" \
+  -b "Please find the monthly report attached." -a "./report.xlsx" -p "mypassword"
 ```
 
 Use a custom SMTP server:
 
 ```bash
-email-send -u "smtp_user" -p "smtp_pass" -f "sender@company.com" -t "client@example.com" \
-  -a "./invoice.pdf" --smtp-host "mail.company.com" --smtp-port 465
+email-send -f "sender@company.com" -t "client@example.com" -s "Invoice" \
+  -a "./invoice.pdf" -u "smtp_user" -p "smtp_pass" --smtp-host "mail.company.com" --smtp-port 465
 ```
 
 ## SMTP Server Auto-Detection

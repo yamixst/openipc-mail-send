@@ -10,14 +10,6 @@ use std::path::PathBuf;
 #[command(name = "email-send")]
 #[command(about = "Send emails with attachments via SMTP")]
 struct Args {
-    /// SMTP authentication username (defaults to FROM_EMAIL if not specified)
-    #[arg(short = 'u', long = "user")]
-    auth_user: Option<String>,
-
-    /// SMTP authentication password
-    #[arg(short = 'p', long = "password")]
-    auth_pass: String,
-
     /// Sender email address
     #[arg(short = 'f', long = "from")]
     from_email: String,
@@ -26,17 +18,25 @@ struct Args {
     #[arg(short = 't', long = "to")]
     to_email: String,
 
-    /// Path to the file to attach
-    #[arg(short = 'a', long = "attach")]
-    attached_file: PathBuf,
-
     /// Email subject
-    #[arg(short = 's', long = "subject", default_value = "Email with attachment")]
+    #[arg(short = 's', long = "subject")]
     subject: String,
 
     /// Email body text
-    #[arg(short = 'b', long = "body", default_value = "Please see the attached file.")]
-    body: String,
+    #[arg(short = 'b', long = "body")]
+    body: Option<String>,
+
+    /// Path to the file to attach
+    #[arg(short = 'a', long = "attach")]
+    attached_file: Option<PathBuf>,
+
+    /// SMTP authentication username (defaults to FROM_EMAIL if not specified)
+    #[arg(short = 'u', long = "user")]
+    auth_user: Option<String>,
+
+    /// SMTP authentication password
+    #[arg(short = 'p', long = "password")]
+    auth_pass: String,
 
     /// SMTP server host
     #[arg(long = "smtp-host")]
@@ -60,6 +60,11 @@ fn extract_smtp_host(email: &str) -> Result<String, String> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
+    // Validate that at least one of body or attach is provided
+    if args.body.is_none() && args.attached_file.is_none() {
+        return Err("At least one of --body or --attach must be specified".into());
+    }
+
     // Use from_email as auth_user if not specified
     let auth_user = args.auth_user.unwrap_or_else(|| args.from_email.clone());
 
@@ -69,38 +74,74 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => extract_smtp_host(&args.from_email)?,
     };
 
-    // Read the attachment file
-    if !args.attached_file.exists() {
-        return Err(format!("File not found: {:?}", args.attached_file).into());
-    }
-
-    let file_content = std::fs::read(&args.attached_file)?;
-    let file_name = args
-        .attached_file
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("attachment");
-
-    // Guess MIME type from file extension
-    let fallback_content_type = ContentType::parse("application/octet-stream").unwrap();
-    let content_type = mime_guess::from_path(&args.attached_file)
-        .first()
-        .map(|mime| ContentType::parse(mime.as_ref()).unwrap_or_else(|_| fallback_content_type.clone()))
-        .unwrap_or(fallback_content_type);
-
-    // Create attachment
-    let attachment = Attachment::new(file_name.to_string()).body(file_content, content_type);
-
-    // Build the email
-    let email = Message::builder()
+    // Build the email message
+    let email_builder = Message::builder()
         .from(args.from_email.parse()?)
         .to(args.to_email.parse()?)
-        .subject(&args.subject)
-        .multipart(
-            MultiPart::mixed()
-                .singlepart(SinglePart::plain(args.body))
-                .singlepart(attachment),
-        )?;
+        .subject(&args.subject);
+
+    let email = match (&args.body, &args.attached_file) {
+        (Some(body), Some(attached_file)) => {
+            // Both body and attachment
+            if !attached_file.exists() {
+                return Err(format!("File not found: {:?}", attached_file).into());
+            }
+
+            let file_content = std::fs::read(attached_file)?;
+            let file_name = attached_file
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("attachment");
+
+            let fallback_content_type = ContentType::parse("application/octet-stream").unwrap();
+            let content_type = mime_guess::from_path(attached_file)
+                .first()
+                .map(|mime| {
+                    ContentType::parse(mime.as_ref()).unwrap_or_else(|_| fallback_content_type.clone())
+                })
+                .unwrap_or(fallback_content_type);
+
+            let attachment = Attachment::new(file_name.to_string()).body(file_content, content_type);
+
+            email_builder.multipart(
+                MultiPart::mixed()
+                    .singlepart(SinglePart::plain(body.clone()))
+                    .singlepart(attachment),
+            )?
+        }
+        (Some(body), None) => {
+            // Only body, no attachment
+            email_builder.body(body.clone())?
+        }
+        (None, Some(attached_file)) => {
+            // Only attachment, no body
+            if !attached_file.exists() {
+                return Err(format!("File not found: {:?}", attached_file).into());
+            }
+
+            let file_content = std::fs::read(attached_file)?;
+            let file_name = attached_file
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("attachment");
+
+            let fallback_content_type = ContentType::parse("application/octet-stream").unwrap();
+            let content_type = mime_guess::from_path(attached_file)
+                .first()
+                .map(|mime| {
+                    ContentType::parse(mime.as_ref()).unwrap_or_else(|_| fallback_content_type.clone())
+                })
+                .unwrap_or(fallback_content_type);
+
+            let attachment = Attachment::new(file_name.to_string()).body(file_content, content_type);
+
+            email_builder.multipart(MultiPart::mixed().singlepart(attachment))?
+        }
+        (None, None) => {
+            // This case is already handled by the validation above
+            unreachable!()
+        }
+    };
 
     // Create SMTP credentials
     let creds = Credentials::new(auth_user, args.auth_pass);
