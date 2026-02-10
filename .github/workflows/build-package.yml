@@ -10,6 +10,9 @@ on:
         description: "Version (without v prefix)"
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
