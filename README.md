@@ -31,11 +31,29 @@ To build for both x86_64 and armv7l Linux:
 ./build.sh
 ```
 
-This requires Docker and will use [cross](https://github.com/cross-rs/cross) for cross-compilation.
+This requires ARM cross-compiler (`arm-linux-gnueabihf-gcc`) to be installed.
+
+### Docker Build
+
+To build using Docker (no local toolchain required):
+
+```bash
+./docker-build.sh
+```
+
+This will build binaries for both x86_64 and armv7l Linux inside a Docker container.
+
+You can also run the tool directly via Docker:
+
+```bash
+docker run --rm -v "$(pwd):/data" email-send-builder \
+  -f "sender@gmail.com" -t "recipient@example.com" -s "Subject" \
+  -a "/data/document.pdf" -p "mypassword"
+```
 
 Binaries will be placed in `./target/release-builds/`:
 - `email-send-x86_64-linux`
-- `email-send-armv7l-linux`
+- `email-send-armv7l-linux` (statically linked with musl)
 
 ## Usage
 
@@ -51,7 +69,7 @@ email-send -f FROM_EMAIL -t TO_EMAIL -s SUBJECT -b BODY -a ATTACHED_FILE_PATH -p
 | `-t`, `--to` | Recipient email address | - |
 | `-s`, `--subject` | Email subject | - |
 | `-b`, `--body` | Email body text | - |
-| `-a`, `--attach` | Path to the file to attach | - |
+| `-a`, `--attach` | Path to file to attach (can be specified multiple times) | - |
 | `-u`, `--user` | SMTP authentication username | Same as Sender |
 | `-p`, `--password` | SMTP authentication password | - |
 | `--smtp-host` | SMTP server hostname | Auto-detected from email domain |
@@ -70,6 +88,14 @@ Send with custom subject and body:
 ```bash
 email-send -f "sender@gmail.com" -t "recipient@example.com" -s "Monthly Report" \
   -b "Please find the monthly report attached." -a "./report.xlsx" -p "mypassword"
+```
+
+Send multiple attachments:
+
+```bash
+email-send -f "sender@gmail.com" -t "recipient@example.com" -s "Documents" \
+  -b "Please find the attached documents." \
+  -a "./report.pdf" -a "./data.xlsx" -a "./summary.docx" -p "mypassword"
 ```
 
 Use a custom SMTP server:

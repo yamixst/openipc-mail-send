@@ -32,30 +32,30 @@ cp target/x86_64-unknown-linux-gnu/release/email-send "$OUTPUT_DIR/email-send-x8
 echo "Built: $OUTPUT_DIR/email-send-x86_64-linux"
 
 echo ""
-echo "=== Building for armv7-unknown-linux-gnueabihf (armv7l) ==="
+echo "=== Building for armv7-unknown-linux-musleabihf (armv7l) ==="
 echo ""
 
 # Add target if not present
-rustup target add armv7-unknown-linux-gnueabihf 2>/dev/null || true
+rustup target add armv7-unknown-linux-musleabihf 2>/dev/null || true
 
-# Check if ARM cross-compiler is available
-if ! command -v arm-linux-gnueabihf-gcc &> /dev/null; then
-    echo "Warning: ARM cross-compiler (arm-linux-gnueabihf-gcc) not found."
-    echo "On Debian/Ubuntu, install with: sudo apt install gcc-arm-linux-gnueabihf"
+# Check if ARM musl cross-compiler is available
+if ! command -v arm-linux-musleabihf-gcc &> /dev/null; then
+    echo "Warning: ARM musl cross-compiler (arm-linux-musleabihf-gcc) not found."
+    echo "Download from https://musl.cc/ and add to PATH"
     echo "Skipping ARM build..."
 else
     # Create cargo config for cross-compilation if not exists
     mkdir -p .cargo
-    if ! grep -q "armv7-unknown-linux-gnueabihf" .cargo/config.toml 2>/dev/null; then
-        echo '[target.armv7-unknown-linux-gnueabihf]' >> .cargo/config.toml
-        echo 'linker = "arm-linux-gnueabihf-gcc"' >> .cargo/config.toml
+    if ! grep -q "armv7-unknown-linux-musleabihf" .cargo/config.toml 2>/dev/null; then
+        echo '[target.armv7-unknown-linux-musleabihf]' >> .cargo/config.toml
+        echo 'linker = "arm-linux-musleabihf-gcc"' >> .cargo/config.toml
     fi
 
-    # Build for armv7l Linux
-    cargo build --release --target armv7-unknown-linux-gnueabihf
+    # Build for armv7l Linux (musl)
+    cargo build --release --target armv7-unknown-linux-musleabihf
 
     # Copy binary to output directory
-    cp target/armv7-unknown-linux-gnueabihf/release/email-send "$OUTPUT_DIR/email-send-armv7l-linux"
+    cp target/armv7-unknown-linux-musleabihf/release/email-send "$OUTPUT_DIR/email-send-armv7l-linux"
     echo "Built: $OUTPUT_DIR/email-send-armv7l-linux"
 fi
 
